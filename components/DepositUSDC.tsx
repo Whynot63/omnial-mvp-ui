@@ -1,28 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { useAccount, useChainId, useSwitchChain, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { optimism, arbitrum, avalanche, polygon } from 'wagmi/chains';
-import { erc20Abi, parseUnits } from 'viem';
-
-// Using viem's standard ERC-20 ABI
-
-// USDC addresses by chain id
-const USDC_ADDRESS_BY_CHAIN_ID: Record<number, `0x${string}`> = {
-  [polygon.id]: '0x3c499c542cef5e3811e1192ce70d8cc03d5c3359',
-  [optimism.id]: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85',
-  [arbitrum.id]: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
-  [avalanche.id]: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E',
-};
-
-const CHAINS = [polygon, optimism, arbitrum, avalanche];
-
-type HexAddress = `0x${string}`;
+import { useAccount, useChainId, useSwitchChain, useReadContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
+import { decodeAbiParameters, erc20Abi, Hex, parseUnits, type Address } from 'viem';
+import { VaultAbi } from '../consts/abis/Vault';
+import { CHAINS, VAULT_ADDRESS } from '../consts';
 
 export function DepositUSDC() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { chains, switchChain, isPending: isSwitching } = useSwitchChain();
   const [amount, setAmount] = useState<string>('');
-  const [customDepositAddress, setCustomDepositAddress] = useState<string>('');
+  // Vault address from env
 
   // Prefer chain list from wagmi config; fallback to our CHAINS constant
   const availableChains = chains?.length ? chains : CHAINS;
@@ -32,11 +19,17 @@ export function DepositUSDC() {
     [availableChains, chainId]
   );
 
-  const tokenAddress = USDC_ADDRESS_BY_CHAIN_ID[selectedChain.id] as HexAddress | undefined;
-
-  // Deposit contract address can come from env or a user-provided input
-  const envDepositAddress = (process.env.NEXT_PUBLIC_DEPOSIT_CONTRACT_ADDRESS as HexAddress | undefined) ?? undefined;
-  const depositContractAddress: HexAddress | undefined = (customDepositAddress as HexAddress) || envDepositAddress;
+  // Read USDC token address from Vault
+  const { data: usdcAddressData } = useReadContract({
+    address: VAULT_ADDRESS,
+    abi: VaultAbi,
+    functionName: 'USDC',
+    query: {
+      enabled: Boolean(VAULT_ADDRESS),
+      staleTime: 60_000,
+    },
+  });
+  const tokenAddress = usdcAddressData as Address | undefined;
 
   // Read USDC decimals (default to 6 if not available yet)
   const { data: decimalsData } = useReadContract({
@@ -66,9 +59,9 @@ export function DepositUSDC() {
     address: tokenAddress,
     abi: erc20Abi,
     functionName: 'allowance',
-    args: [address as HexAddress, depositContractAddress as HexAddress],
+    args: [address as Address, VAULT_ADDRESS],
     query: {
-      enabled: Boolean(address && tokenAddress && depositContractAddress),
+      enabled: Boolean(address),
       refetchInterval: 15_000,
     },
   });
@@ -86,12 +79,12 @@ export function DepositUSDC() {
   const isBusy = isSwitching || isWriting || isWaiting || isFetchingAllowance;
 
   const onApprove = async () => {
-    if (!tokenAddress || !depositContractAddress || !parsedAmount) return;
+    if (!tokenAddress || !parsedAmount) return;
     writeContract({
       address: tokenAddress,
       abi: erc20Abi,
       functionName: 'approve',
-      args: [depositContractAddress, parsedAmount],
+      args: [VAULT_ADDRESS, parsedAmount],
       chainId: selectedChain.id,
     }, {
       onSuccess: () => {
@@ -101,28 +94,18 @@ export function DepositUSDC() {
   };
 
   const onDeposit = async () => {
-    if (!depositContractAddress || !parsedAmount) return;
-    // Assumes the deposit contract exposes: function deposit(uint256 amount)
-    const DEPOSIT_ABI = [
-      {
-        name: 'deposit',
-        type: 'function',
-        stateMutability: 'nonpayable',
-        inputs: [{ name: 'amount', type: 'uint256' }],
-        outputs: [],
-      },
-    ] as const;
-
+    if (!VAULT_ADDRESS || !parsedAmount || !address) return;
+    // Vault deposit: deposit(uint256 assets, address receiver, bytes _extraOptions) payable
     writeContract({
-      address: depositContractAddress,
-      abi: DEPOSIT_ABI,
+      address: VAULT_ADDRESS,
+      abi: VaultAbi,
       functionName: 'deposit',
-      args: [parsedAmount],
+      args: [parsedAmount, address as Address, '0x'],
       chainId: selectedChain.id,
     });
   };
 
-  const canDeposit = Boolean(isConnected && parsedAmount && depositContractAddress && !needsApproval);
+  const canDeposit = Boolean(isConnected && parsedAmount && VAULT_ADDRESS && !needsApproval);
 
   const card: React.CSSProperties = {
     maxWidth: 420,
@@ -230,32 +213,19 @@ export function DepositUSDC() {
           </div>
         </div>
 
-        {!envDepositAddress && (
-          <div>
-            <div style={label}>Deposit contract</div>
-            <input
-              type="text"
-              placeholder="0x..."
-              value={customDepositAddress}
-              onChange={(e) => setCustomDepositAddress(e.target.value)}
-              style={input}
-            />
+        {!VAULT_ADDRESS && (
+          <div style={{ fontSize: 12, color: '#777', textAlign: 'center' }}>
+            Set env var `NEXT_PUBLIC_VAULT_ADDRESS` to enable deposits.
           </div>
         )}
 
         <button
           onClick={onPrimaryAction}
-          disabled={(!parsedAmount || !depositContractAddress || isBusy || !tokenAddress) && isConnected}
+          disabled={(!parsedAmount || !VAULT_ADDRESS || isBusy || !tokenAddress) && isConnected}
           style={primaryBtn}
         >
           {isBusy ? (needsApproval ? 'Approving…' : 'Processing…') : actionLabel}
         </button>
-
-        {isConnected && (!depositContractAddress || !tokenAddress) && (
-          <div style={{ fontSize: 12, color: '#777', textAlign: 'center' }}>
-            Enter a valid deposit contract and ensure USDC is supported on this network.
-          </div>
-        )}
       </div>
     </div>
   );
