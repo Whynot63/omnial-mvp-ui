@@ -1,62 +1,80 @@
 import React, { useMemo, useState } from 'react';
 import { useAccount, useChainId, useSwitchChain, useReadContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
-import { decodeAbiParameters, erc20Abi, Hex, parseUnits, type Address } from 'viem';
+import { erc20Abi, formatUnits, maxUint256, parseUnits, type Address } from 'viem';
 import { VaultAbi } from '../consts/abis/Vault';
-import { CHAINS, VAULT_ADDRESS } from '../consts';
+import { CHAINS, VAULT_ADDRESS, USDC_ADDRESS } from '../consts';
+
+const EXTRA_OPTIONS = "0x"
+const DECIMALS = 6
 
 export function DepositUSDC() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { chains, switchChain, isPending: isSwitching } = useSwitchChain();
   const [amount, setAmount] = useState<string>('');
-  // Vault address from env
-
-  // Prefer chain list from wagmi config; fallback to our CHAINS constant
   const availableChains = chains?.length ? chains : CHAINS;
+
+  const { data: fee } = useReadContract({
+    address: VAULT_ADDRESS,
+    abi: VaultAbi,
+    functionName: 'quoteDeposit',
+    args: [EXTRA_OPTIONS]
+  })
+  const { data: rawTokenData } = useReadContracts({
+    contracts: CHAINS.flatMap((chain) => ([
+      {
+        address: USDC_ADDRESS(chain.id),
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [address],
+        chainId: chain.id
+      },
+      {
+        address: USDC_ADDRESS(chain.id),
+        abi: erc20Abi,
+        functionName: "allowance",
+        args: [address, VAULT_ADDRESS],
+        chainId: chain.id
+      }
+    ])),
+    query: {
+      enabled: address !== undefined
+    }
+  })
+
+  const tokenData = useMemo(() => {
+    if (rawTokenData === undefined) return;
+
+    return CHAINS.map((chain, idx) => {
+      const rawBalance = rawTokenData[idx * 2];
+      const rawAllowance = rawTokenData[idx * 2 + 1];
+
+      return {
+        chain,
+        balance: rawBalance.result !== undefined ? BigInt(rawBalance.result) : 0n,
+        allowance: rawAllowance.result !== undefined ? BigInt(rawAllowance.result) : 0n,
+      }
+    });
+  }, [rawTokenData])
 
   const selectedChain = useMemo(
     () => availableChains.find((c) => c.id === chainId) ?? CHAINS[0],
     [availableChains, chainId]
   );
 
-  // Read USDC token address from Vault
-  const { data: usdcAddressData } = useReadContract({
-    address: VAULT_ADDRESS,
-    abi: VaultAbi,
-    functionName: 'USDC',
-    query: {
-      enabled: Boolean(VAULT_ADDRESS),
-      staleTime: 60_000,
-    },
-  });
-  const tokenAddress = usdcAddressData as Address | undefined;
-
-  // Read USDC decimals (default to 6 if not available yet)
-  const { data: decimalsData } = useReadContract({
-    address: tokenAddress,
-    abi: erc20Abi,
-    functionName: 'decimals',
-    query: {
-      enabled: Boolean(tokenAddress),
-      staleTime: 60_000,
-    },
-  });
-
-  const tokenDecimals: number = Number(decimalsData ?? 6);
-
   const parsedAmount = useMemo(() => {
     const numeric = Number(amount);
     if (!Number.isFinite(numeric) || numeric <= 0) return undefined;
     try {
-      return parseUnits(amount as `${number}` | `${bigint}`, tokenDecimals);
+      return parseUnits(amount as `${number}` | `${bigint}`, DECIMALS);
     } catch {
       return undefined;
     }
-  }, [amount, tokenDecimals]);
+  }, [amount]);
 
   // Fetch allowance for spender (deposit contract)
   const { data: allowanceData, isFetching: isFetchingAllowance } = useReadContract({
-    address: tokenAddress,
+    address: USDC_ADDRESS(chainId),
     abi: erc20Abi,
     functionName: 'allowance',
     args: [address as Address, VAULT_ADDRESS],
@@ -79,12 +97,12 @@ export function DepositUSDC() {
   const isBusy = isSwitching || isWriting || isWaiting || isFetchingAllowance;
 
   const onApprove = async () => {
-    if (!tokenAddress || !parsedAmount) return;
+    if (!parsedAmount) return;
     writeContract({
-      address: tokenAddress,
+      address: USDC_ADDRESS(chainId),
       abi: erc20Abi,
       functionName: 'approve',
-      args: [VAULT_ADDRESS, parsedAmount],
+      args: [VAULT_ADDRESS, maxUint256],
       chainId: selectedChain.id,
     }, {
       onSuccess: () => {
@@ -94,18 +112,17 @@ export function DepositUSDC() {
   };
 
   const onDeposit = async () => {
-    if (!VAULT_ADDRESS || !parsedAmount || !address) return;
+    if (!VAULT_ADDRESS || !parsedAmount || !address || !fee) return;
     // Vault deposit: deposit(uint256 assets, address receiver, bytes _extraOptions) payable
     writeContract({
       address: VAULT_ADDRESS,
       abi: VaultAbi,
       functionName: 'deposit',
-      args: [parsedAmount, address as Address, '0x'],
+      args: [parsedAmount, address as Address, EXTRA_OPTIONS],
       chainId: selectedChain.id,
+      value: fee.nativeFee
     });
   };
-
-  const canDeposit = Boolean(isConnected && parsedAmount && VAULT_ADDRESS && !needsApproval);
 
   const card: React.CSSProperties = {
     maxWidth: 420,
@@ -213,20 +230,76 @@ export function DepositUSDC() {
           </div>
         </div>
 
-        {!VAULT_ADDRESS && (
-          <div style={{ fontSize: 12, color: '#777', textAlign: 'center' }}>
-            Set env var `NEXT_PUBLIC_VAULT_ADDRESS` to enable deposits.
-          </div>
-        )}
-
         <button
           onClick={onPrimaryAction}
-          disabled={(!parsedAmount || !VAULT_ADDRESS || isBusy || !tokenAddress) && isConnected}
+          disabled={(!parsedAmount || !VAULT_ADDRESS || isBusy) && isConnected}
           style={primaryBtn}
         >
           {isBusy ? (needsApproval ? 'Approving…' : 'Processing…') : actionLabel}
         </button>
       </div>
+
+      {tokenData && tokenData.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={label}>Your USDC Balances</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {tokenData.filter(td => td.balance > 0).sort((a, b) => Number(b.balance - a.balance)).map((td, index) => (
+              <div
+                key={`${td.chain.id}-${index}`}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  background: 'rgba(0,0,0,0.02)',
+                  border: '1px solid rgba(0,0,0,0.04)',
+                  fontSize: 14,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {getChainIconUrl(td.chain) ? (
+                    <img 
+                      src={getChainIconUrl(td.chain)} 
+                      alt={td.chain.name} 
+                      width={20} 
+                      height={20} 
+                      style={{ borderRadius: 999 }} 
+                    />
+                  ) : (
+                    <div style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 999,
+                      background: 'rgba(0,0,0,0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: '#666'
+                    }}>
+                      {td.chain.name.charAt(0)}
+                    </div>
+                  )}
+                  <span style={{ fontWeight: 500, color: '#333' }}>{td.chain.name}</span>
+                </div>
+                <div style={{ 
+                  fontWeight: 600, 
+                  color: '#111',
+                  fontFamily: 'monospace',
+                  fontSize: 15
+                }}>
+                  {Number(formatUnits(td.balance, 6)).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 6
+                  })} USDC
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

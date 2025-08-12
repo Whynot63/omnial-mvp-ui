@@ -21,9 +21,12 @@ const Home: NextPage = () => {
         functionName: 'stats',
         chainId: chain.id
       }
-    ]))
+    ])),
+    query: {
+      refetchInterval: 2_000
+    }
   })
-  
+
   useEffect(() => {
     if (rawStats === undefined) return;
     setStats(CHAINS.map((chain, idx) => {

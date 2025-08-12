@@ -1,6 +1,6 @@
 import { Abi } from "viem";
 
-export const VaultAbi: Abi = [
+export const VaultAbi = [
   {
     "inputs": [
       {

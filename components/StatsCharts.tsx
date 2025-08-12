@@ -1,6 +1,6 @@
 import React from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Pie } from 'react-chartjs-2';
+import { Doughnut } from 'react-chartjs-2';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -21,21 +21,11 @@ export function StatsCharts({ stats }: StatsChartsProps) {
   };
 
   const chartData = {
-    labels: stats.map(stat => stat.chain),
+    labels: stats.filter((s) => s.localShares !== 0n).map(stat => stat.chain),
     datasets: [
       {
-        label: 'Local Shares',
-        data: stats.map(stat => formatBigInt(stat.localShares)),
-        backgroundColor: [
-          '#FF6384',
-          '#36A2EB',
-          '#FFCE56',
-          '#4BC0C0',
-          '#9966FF',
-          '#FF9F40',
-          '#FF6384',
-          '#C9CBCF',
-        ],
+        label: 'Shares',
+        data: stats.filter((s) => s.localShares !== 0n).map(stat => formatBigInt(stat.localShares)),
         borderWidth: 2,
         borderColor: '#fff',
       },
@@ -43,21 +33,11 @@ export function StatsCharts({ stats }: StatsChartsProps) {
   };
 
   const assetsChartData = {
-    labels: stats.map(stat => stat.chain),
+    labels: stats.filter((s) => s.localAssets !== 0n).map(stat => stat.chain),
     datasets: [
       {
-        label: 'Local Assets',
-        data: stats.map(stat => formatBigInt(stat.localAssets)),
-        backgroundColor: [
-          '#4BC0C0',
-          '#FF9F40',
-          '#9966FF',
-          '#FF6384',
-          '#36A2EB',
-          '#FFCE56',
-          '#C9CBCF',
-          '#FF6384',
-        ],
+        label: 'Assets',
+        data: stats.filter((s) => s.localAssets !== 0n).map(stat => formatBigInt(stat.localAssets)),
         borderWidth: 2,
         borderColor: '#fff',
       },
@@ -76,7 +56,7 @@ export function StatsCharts({ stats }: StatsChartsProps) {
       },
       tooltip: {
         callbacks: {
-          label: function(context: any) {
+          label: function (context: any) {
             const label = context.label || '';
             const value = context.parsed || 0;
             return `${label}: ${value.toFixed(4)}`;
@@ -124,12 +104,12 @@ export function StatsCharts({ stats }: StatsChartsProps) {
     <div style={containerStyle}>
       <div style={chartContainerStyle}>
         <div style={titleStyle}>Local Shares by Chain</div>
-        <Pie data={chartData} options={chartOptions} />
+        <Doughnut data={chartData} options={chartOptions} />
       </div>
-      
+
       <div style={chartContainerStyle}>
         <div style={titleStyle}>Local Assets by Chain</div>
-        <Pie data={assetsChartData} options={chartOptions} />
+        <Doughnut data={assetsChartData} options={chartOptions} />
       </div>
     </div>
   );
