@@ -113,7 +113,6 @@ export function DepositUSDC() {
 
   const onDeposit = async () => {
     if (!VAULT_ADDRESS || !parsedAmount || !address || !fee) return;
-    // Vault deposit: deposit(uint256 assets, address receiver, bytes _extraOptions) payable
     writeContract({
       address: VAULT_ADDRESS,
       abi: VaultAbi,
@@ -255,6 +254,10 @@ export function DepositUSDC() {
                   background: 'rgba(0,0,0,0.02)',
                   border: '1px solid rgba(0,0,0,0.04)',
                   fontSize: 14,
+                }}
+                onClick={() => {
+                  switchChain?.({ chainId: td.chain.id })
+                  setAmount(formatUnits(td.balance, 6))
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
