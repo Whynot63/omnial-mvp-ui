@@ -9,6 +9,7 @@ import { VaultAbi } from '../consts/abis/Vault';
 import StatsCharts from '../components/StatsCharts';
 
 const DepositUSDC = dynamic(() => import('../components/DepositUSDC'), { ssr: false });
+const Withdraw = dynamic(() => import('../components/Withdraw'), { ssr: false });
 
 const Home: NextPage = () => {
   const [stats, setStats] = useState<{ chain: string, localShares: bigint, localAssets: bigint }[]>();
@@ -42,6 +43,7 @@ const Home: NextPage = () => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 20 }}>
       <ConnectKitButton />
       <DepositUSDC />
+      <Withdraw />
       <StatsCharts stats={stats || []} />
     </div>
   );
