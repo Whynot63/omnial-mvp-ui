@@ -43,7 +43,7 @@ export function DepositUSDC() {
   })
 
   const tokenData = useMemo(() => {
-    if (rawTokenData === undefined) return;
+    if (rawTokenData === undefined) return [];
 
     return CHAINS.map((chain, idx) => {
       const rawBalance = rawTokenData[idx * 2];
@@ -54,7 +54,7 @@ export function DepositUSDC() {
         balance: rawBalance.result !== undefined ? BigInt(rawBalance.result) : 0n,
         allowance: rawAllowance.result !== undefined ? BigInt(rawAllowance.result) : 0n,
       }
-    });
+    }).filter(({ balance }) => balance !== 0n);
   }, [rawTokenData])
 
   const selectedChain = useMemo(
@@ -238,11 +238,11 @@ export function DepositUSDC() {
         </button>
       </div>
 
-      {tokenData && tokenData.length > 0 && (
+      {tokenData.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div style={label}>Your USDC Balances</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {tokenData.filter(td => td.balance > 0).sort((a, b) => Number(b.balance - a.balance)).map((td, index) => (
+            {tokenData.sort((a, b) => Number(b.balance - a.balance)).map((td, index) => (
               <div
                 key={`${td.chain.id}-${index}`}
                 style={{
@@ -262,12 +262,12 @@ export function DepositUSDC() {
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {getChainIconUrl(td.chain) ? (
-                    <img 
-                      src={getChainIconUrl(td.chain)} 
-                      alt={td.chain.name} 
-                      width={20} 
-                      height={20} 
-                      style={{ borderRadius: 999 }} 
+                    <img
+                      src={getChainIconUrl(td.chain)}
+                      alt={td.chain.name}
+                      width={20}
+                      height={20}
+                      style={{ borderRadius: 999 }}
                     />
                   ) : (
                     <div style={{
@@ -287,8 +287,8 @@ export function DepositUSDC() {
                   )}
                   <span style={{ fontWeight: 500, color: '#333' }}>{td.chain.name}</span>
                 </div>
-                <div style={{ 
-                  fontWeight: 600, 
+                <div style={{
+                  fontWeight: 600,
                   color: '#111',
                   fontFamily: 'monospace',
                   fontSize: 15
