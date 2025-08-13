@@ -66,22 +66,6 @@ export function StatsCharts({ stats }: StatsChartsProps) {
     },
   };
 
-  const containerStyle: React.CSSProperties = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '24px',
-    width: '100%',
-    maxWidth: '800px',
-  };
-
-  const chartContainerStyle: React.CSSProperties = {
-    background: '#fff',
-    borderRadius: '12px',
-    padding: '20px',
-    border: '1px solid rgba(0,0,0,0.08)',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-  };
-
   const titleStyle: React.CSSProperties = {
     fontSize: '18px',
     fontWeight: '600',
@@ -92,22 +76,21 @@ export function StatsCharts({ stats }: StatsChartsProps) {
 
   if (!stats || stats.length === 0) {
     return (
-      <div style={containerStyle}>
-        <div style={chartContainerStyle}>
-          <div style={titleStyle}>🤷‍♂️</div>
-        </div>
+      <div style={{ textAlign: 'center', padding: '40px' }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🤷‍♂️</div>
+        <div style={{ color: '#666' }}>No stats available</div>
       </div>
     );
   }
 
   return (
-    <div style={containerStyle}>
-      <div style={chartContainerStyle}>
+    <div>
+      <div style={{ marginBottom: '24px' }}>
         <div style={titleStyle}>Local Shares by Chain</div>
         <Doughnut data={chartData} options={chartOptions} />
       </div>
 
-      <div style={chartContainerStyle}>
+      <div>
         <div style={titleStyle}>Local Assets by Chain</div>
         <Doughnut data={assetsChartData} options={chartOptions} />
       </div>

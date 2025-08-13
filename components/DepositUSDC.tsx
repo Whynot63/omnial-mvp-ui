@@ -123,16 +123,6 @@ export function DepositUSDC() {
     });
   };
 
-  const card: React.CSSProperties = {
-    maxWidth: 420,
-    width: '100%',
-    padding: 16,
-    borderRadius: 14,
-    background: 'linear-gradient(180deg, #ffffff 0%, #fafafa 100%)',
-    border: '1px solid rgba(0,0,0,0.06)',
-    boxShadow: '0 4px 18px rgba(0,0,0,0.05)'
-  };
-
   const label: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: '#444', marginBottom: 8 };
   const input: React.CSSProperties = {
     padding: '14px 16px',
@@ -178,7 +168,7 @@ export function DepositUSDC() {
   };
 
   return (
-    <div style={card}>
+    <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div style={{ fontWeight: 700, fontSize: 16 }}>Deposit USDC</div>
       </div>
