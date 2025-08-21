@@ -100,7 +100,7 @@ export function TabbedInterface({ stats }: TabbedInterfaceProps) {
 
         .tab-content {
           padding: 24px;
-          min-height: 400px;
+          min-height: 300px;
         }
       `}</style>
     </div>

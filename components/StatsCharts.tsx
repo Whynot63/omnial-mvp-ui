@@ -67,17 +67,17 @@ export function StatsCharts({ stats }: StatsChartsProps) {
   };
 
   const titleStyle: React.CSSProperties = {
-    fontSize: '18px',
+    fontSize: '16px',
     fontWeight: '600',
-    marginBottom: '16px',
+    marginBottom: '12px',
     textAlign: 'center',
     color: '#333',
   };
 
   if (!stats || stats.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🤷‍♂️</div>
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <div style={{ fontSize: '32px', marginBottom: '8px' }}>🤷‍♂️</div>
         <div style={{ color: '#666' }}>No stats available</div>
       </div>
     );
@@ -85,14 +85,16 @@ export function StatsCharts({ stats }: StatsChartsProps) {
 
   return (
     <div>
-      <div style={{ marginBottom: '24px' }}>
-        <div style={titleStyle}>Local Shares by Chain</div>
-        <Doughnut data={chartData} options={chartOptions} />
-      </div>
+      <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
+        <div style={{ flex: 1, maxWidth: '300px' }}>
+          <div style={titleStyle}>Local Shares by Chain</div>
+          <Doughnut data={chartData} options={chartOptions} />
+        </div>
 
-      <div>
-        <div style={titleStyle}>Local Assets by Chain</div>
-        <Doughnut data={assetsChartData} options={chartOptions} />
+        <div style={{ flex: 1, maxWidth: '300px' }}>
+          <div style={titleStyle}>Local Assets by Chain</div>
+          <Doughnut data={assetsChartData} options={chartOptions} />
+        </div>
       </div>
     </div>
   );
