@@ -1,5 +1,3 @@
-import { Abi } from "viem";
-
 export const VaultAbi = [
   {
     "inputs": [
@@ -14,9 +12,14 @@ export const VaultAbi = [
         "type": "string"
       },
       {
-        "internalType": "contract IERC20",
-        "name": "usdc",
+        "internalType": "address",
+        "name": "delegate",
         "type": "address"
+      },
+      {
+        "internalType": "uint8",
+        "name": "decimalsOffset",
+        "type": "uint8"
       },
       {
         "components": [
@@ -27,27 +30,27 @@ export const VaultAbi = [
           },
           {
             "internalType": "address",
-            "name": "delegate",
+            "name": "usdc",
             "type": "address"
           },
           {
-            "internalType": "contract IPoolAddressesProvider",
-            "name": "poolAddressesProvider",
+            "internalType": "address",
+            "name": "aavePoolAddressesProvider",
             "type": "address"
           },
           {
-            "internalType": "contract ITokenMessengerV2",
-            "name": "tokenMessenger",
+            "internalType": "address",
+            "name": "cctpTokenMessenger",
             "type": "address"
           },
           {
-            "internalType": "contract IReceiverV2",
-            "name": "messageTransmitter",
+            "internalType": "address",
+            "name": "cctpMessageTransmitter",
             "type": "address"
           }
         ],
-        "internalType": "struct OVaultData",
-        "name": "data",
+        "internalType": "struct IOmnialAaveUsdcVault.ChainSpecificAddresses",
+        "name": "addresses",
         "type": "tuple"
       }
     ],
@@ -149,6 +152,17 @@ export const VaultAbi = [
       }
     ],
     "name": "ERC20InvalidSpender",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "key",
+        "type": "bytes32"
+      }
+    ],
+    "name": "EnumerableMapNonexistentKey",
     "type": "error"
   },
   {
@@ -341,6 +355,31 @@ export const VaultAbi = [
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "assets",
+        "type": "uint256"
+      }
+    ],
+    "name": "DepositStarted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "components": [
           {
             "internalType": "uint32",
@@ -505,6 +544,31 @@ export const VaultAbi = [
       {
         "indexed": true,
         "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "assets",
+        "type": "uint256"
+      }
+    ],
+    "name": "RedeemFinished",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
         "name": "from",
         "type": "address"
       },
@@ -565,38 +629,17 @@ export const VaultAbi = [
   },
   {
     "inputs": [],
-    "name": "POOL_ADDRESSES_PROVIDER",
+    "name": "PPS",
     "outputs": [
       {
-        "internalType": "contract IPoolAddressesProvider",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "READ_CHANNEL",
-    "outputs": [
+        "internalType": "int256",
+        "name": "localAssets",
+        "type": "int256"
+      },
       {
-        "internalType": "uint32",
-        "name": "",
-        "type": "uint32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "READ_TYPE",
-    "outputs": [
-      {
-        "internalType": "uint16",
-        "name": "",
-        "type": "uint16"
+        "internalType": "int256",
+        "name": "localShares",
+        "type": "int256"
       }
     ],
     "stateMutability": "view",
@@ -667,7 +710,7 @@ export const VaultAbi = [
         "type": "uint256[]"
       }
     ],
-    "name": "addDeployment",
+    "name": "addDeployments",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -877,6 +920,19 @@ export const VaultAbi = [
   },
   {
     "inputs": [],
+    "name": "deploymentDomains",
+    "outputs": [
+      {
+        "internalType": "uint32[]",
+        "name": "domains",
+        "type": "uint32[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "deploymentEids",
     "outputs": [
       {
@@ -902,7 +958,7 @@ export const VaultAbi = [
       },
       {
         "internalType": "bytes",
-        "name": "_extraOptions",
+        "name": "extraOptions",
         "type": "bytes"
       }
     ],
@@ -960,7 +1016,7 @@ export const VaultAbi = [
       },
       {
         "internalType": "bytes",
-        "name": "_extraOptions",
+        "name": "extraOptions",
         "type": "bytes"
       }
     ],
@@ -1002,6 +1058,13 @@ export const VaultAbi = [
       }
     ],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "emergencyWithdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -1605,6 +1668,37 @@ export const VaultAbi = [
   {
     "inputs": [
       {
+        "internalType": "bytes",
+        "name": "_extraOptions",
+        "type": "bytes"
+      }
+    ],
+    "name": "quoteRedeem",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "nativeFee",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "lzTokenFee",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct MessagingFee",
+        "name": "fee",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "components": [
           {
             "internalType": "uint32",
@@ -1694,7 +1788,7 @@ export const VaultAbi = [
       },
       {
         "internalType": "bytes",
-        "name": "_extraOptions",
+        "name": "extraOptions",
         "type": "bytes"
       }
     ],
@@ -1739,6 +1833,19 @@ export const VaultAbi = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "eids",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "removeDeployments",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "renounceOwnership",
     "outputs": [],
@@ -1753,22 +1860,22 @@ export const VaultAbi = [
         "type": "bytes32"
       }
     ],
-    "name": "requests",
+    "name": "requestByGUID",
     "outputs": [
       {
-        "internalType": "address",
-        "name": "receiver",
-        "type": "address"
-      },
-      {
-        "internalType": "bool",
-        "name": "isDeposit",
-        "type": "bool"
+        "internalType": "enum IOmnialAaveUsdcVault.RequestType",
+        "name": "type_",
+        "type": "uint8"
       },
       {
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "receiver",
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -2045,19 +2152,6 @@ export const VaultAbi = [
     "name": "startRebalance",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "stats",
-    "outputs": [
-      {
-        "internalType": "bytes",
-        "name": "rawStats",
-        "type": "bytes"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {

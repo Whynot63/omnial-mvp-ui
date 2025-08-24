@@ -204,7 +204,7 @@ export function Withdraw() {
                 }}
                 onClick={() => {
                   switchChain?.({ chainId: td.chain.id })
-                  setAmount(formatUnits(td.balance, 6))
+                  setAmount(formatUnits(td.balance, 18))
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -240,7 +240,7 @@ export function Withdraw() {
                   fontFamily: 'monospace',
                   fontSize: 15
                 }}>
-                  {Number(formatUnits(td.balance, 6)).toLocaleString('en-US', {
+                  {Number(formatUnits(td.balance, 18)).toLocaleString('en-US', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 6
                   })} shares

@@ -3,17 +3,7 @@ import DepositUSDC from './DepositUSDC';
 import Withdraw from './Withdraw';
 import StatsCharts from './StatsCharts';
 
-interface StatsData {
-  chain: string;
-  localShares: bigint;
-  localAssets: bigint;
-}
-
-interface TabbedInterfaceProps {
-  stats: StatsData[];
-}
-
-export function TabbedInterface({ stats }: TabbedInterfaceProps) {
+export function TabbedInterface() {
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw' | 'stats'>('deposit');
 
   const renderTabContent = () => {
@@ -23,7 +13,7 @@ export function TabbedInterface({ stats }: TabbedInterfaceProps) {
       case 'withdraw':
         return <Withdraw />;
       case 'stats':
-        return <StatsCharts stats={stats} />;
+        return <StatsCharts />;
       default:
         return <DepositUSDC />;
     }
@@ -51,7 +41,7 @@ export function TabbedInterface({ stats }: TabbedInterfaceProps) {
           Stats
         </button>
       </div>
-      
+
       <div className="tab-content">
         {renderTabContent()}
       </div>

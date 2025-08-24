@@ -1,48 +1,65 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
+import { useReadContracts } from 'wagmi';
+import { CHAINS, VAULT_ADDRESS } from '../consts';
+import { VaultAbi } from '../consts/abis/Vault';
+import { formatUnits } from 'viem';
+import { arbitrum, avalanche, optimism, polygon } from 'viem/chains';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-interface StatsData {
-  chain: string;
-  localShares: bigint;
-  localAssets: bigint;
-}
+const COLORS = {
+  background: {
+    [avalanche.name]: "rgba(232, 65, 66, 0.8)",   // #E84142
+    [polygon.name]: "rgba(130, 71, 229, 0.8)",  // #8247E5
+    [arbitrum.name]: "rgba(40, 160, 240, 0.8)",  // #28A0F0
+    [optimism.name]: "rgba(255, 69, 0, 0.8)",    // #FF4500
+  },
+  border: {
+    [avalanche.name]: "rgba(232, 65, 66, 1)",     // #E84142
+    [polygon.name]: "rgba(130, 71, 229, 1)",    // #8247E5
+    [arbitrum.name]: "rgba(40, 160, 240, 1)",    // #28A0F0
+    [optimism.name]: "rgba(255, 69, 0, 1)",      // #FF4500
+  }
+};
 
-interface StatsChartsProps {
-  stats: StatsData[];
-}
 
-export function StatsCharts({ stats }: StatsChartsProps) {
-  // Convert BigInt to number for Chart.js (assuming values are reasonable)
-  const formatBigInt = (value: bigint): number => {
-    return Number(value) / 1e6; // Assuming 18 decimals, adjust if needed
-  };
+export function StatsCharts() {
+  const [localAssets, setLocalAssets] = useState<{ chain: string, amount: bigint }[]>([]);
+  const [localShares, setLocalShares] = useState<{ chain: string, amount: bigint }[]>([]);
 
-  const chartData = {
-    labels: stats.filter((s) => s.localShares !== 0n).map(stat => stat.chain),
-    datasets: [
+  const { data: rawStats } = useReadContracts({
+    contracts: CHAINS.flatMap((chain) => ([
       {
-        label: 'Shares',
-        data: stats.filter((s) => s.localShares !== 0n).map(stat => formatBigInt(stat.localShares)),
-        borderWidth: 2,
-        borderColor: '#fff',
-      },
-    ],
-  };
+        address: VAULT_ADDRESS,
+        abi: VaultAbi,
+        functionName: "PPS",
+        chainId: chain.id,
+      }
+    ])),
+    query: {
+      refetchInterval: 2_000
+    }
+  })
 
-  const assetsChartData = {
-    labels: stats.filter((s) => s.localAssets !== 0n).map(stat => stat.chain),
-    datasets: [
-      {
-        label: 'Assets',
-        data: stats.filter((s) => s.localAssets !== 0n).map(stat => formatBigInt(stat.localAssets)),
-        borderWidth: 2,
-        borderColor: '#fff',
-      },
-    ],
-  };
+  useEffect(() => {
+    if (rawStats === undefined) return;
+
+    CHAINS.forEach((chain, idx) => {
+      const chainStats = rawStats[idx].result;
+      if (chainStats === undefined) return;
+
+      const [localAssets, localShares] = chainStats as [bigint, bigint];
+      if (localAssets > 0n)
+        setLocalAssets(la => [...la.filter(stat => stat.chain !== chain.name), { chain: chain.name, amount: localAssets }]);
+
+      if (localShares > 0n)
+        setLocalShares(ls => [...ls.filter(stat => stat.chain !== chain.name), { chain: chain.name, amount: localShares }]);
+
+    })
+  }, [rawStats])
+
 
   const chartOptions = {
     responsive: true,
@@ -74,7 +91,7 @@ export function StatsCharts({ stats }: StatsChartsProps) {
     color: '#333',
   };
 
-  if (!stats || stats.length === 0) {
+  if (localAssets.length === 0 || localShares.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '20px' }}>
         <div style={{ fontSize: '32px', marginBottom: '8px' }}>🤷‍♂️</div>
@@ -83,21 +100,43 @@ export function StatsCharts({ stats }: StatsChartsProps) {
     );
   }
 
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
-        <div style={{ flex: 1, maxWidth: '300px' }}>
-          <div style={titleStyle}>Local Shares by Chain</div>
-          <Doughnut data={chartData} options={chartOptions} />
-        </div>
+  console.log(localShares, COLORS);
 
-        <div style={{ flex: 1, maxWidth: '300px' }}>
-          <div style={titleStyle}>Local Assets by Chain</div>
-          <Doughnut data={assetsChartData} options={chartOptions} />
-        </div>
+  return <div>
+    <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
+      <div style={{ flex: 1, maxWidth: '300px' }}>
+        <div style={titleStyle}>Shares by Chain</div>
+        <Doughnut data={{
+          labels: localShares.map(stat => stat.chain),
+          datasets: [
+            {
+              label: 'Shares',
+              data: localShares.map(stat => Number(formatUnits(stat.amount, 18))),
+              borderWidth: 2,
+              backgroundColor: localShares.map(stat => COLORS.background[stat.chain]),
+              borderColor: localShares.map(stat => COLORS.border[stat.chain]),
+            },
+          ],
+        }} options={chartOptions} />
+      </div>
+
+      <div style={{ flex: 1, maxWidth: '300px' }}>
+        <div style={titleStyle}>Assets by Chain</div>
+        <Doughnut data={{
+          labels: localAssets.map(stat => stat.chain),
+          datasets: [
+            {
+              label: 'Shares',
+              data: localAssets.map(stat => Number(formatUnits(stat.amount, 6))),
+              borderWidth: 2,
+              backgroundColor: localAssets.map(stat => COLORS.background[stat.chain]),
+              borderColor: localAssets.map(stat => COLORS.border[stat.chain]),
+            },
+          ],
+        }} options={chartOptions} />
       </div>
     </div>
-  );
+  </div>
 }
 
 export default StatsCharts; 
