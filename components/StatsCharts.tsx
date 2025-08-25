@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
-import { useReadContracts } from 'wagmi';
-import { CHAINS, VAULT_ADDRESS } from '../consts';
+import { usePublicClient, useReadContracts } from 'wagmi';
+import { AUSDC_ADDRESS, CHAINS, VAULT_ADDRESS } from '../consts';
 import { VaultAbi } from '../consts/abis/Vault';
-import { formatUnits } from 'viem';
+import { erc20Abi, formatUnits } from 'viem';
 import { arbitrum, avalanche, optimism, polygon } from 'viem/chains';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -34,9 +34,16 @@ export function StatsCharts() {
       {
         address: VAULT_ADDRESS,
         abi: VaultAbi,
-        functionName: "PPS",
+        functionName: "totalSupply",
         chainId: chain.id,
-      }
+      },
+      {
+        address: AUSDC_ADDRESS(chain.id),
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        chainId: chain.id,
+        args: [VAULT_ADDRESS]
+      },
     ])),
     query: {
       refetchInterval: 2_000
@@ -47,10 +54,9 @@ export function StatsCharts() {
     if (rawStats === undefined) return;
 
     CHAINS.forEach((chain, idx) => {
-      const chainStats = rawStats[idx].result;
-      if (chainStats === undefined) return;
+      const localShares = rawStats[2 * idx].result as bigint;
+      const localAssets = rawStats[2 * idx + 1].result as bigint;
 
-      const [localAssets, localShares] = chainStats as [bigint, bigint];
       if (localAssets > 0n)
         setLocalAssets(la => [...la.filter(stat => stat.chain !== chain.name), { chain: chain.name, amount: localAssets }]);
 
@@ -104,7 +110,7 @@ export function StatsCharts() {
 
   return <div>
     <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
-      <div style={{ flex: 1, maxWidth: '300px' }}>
+      <div style={{ flex: 1, maxWidth: '350px' }}>
         <div style={titleStyle}>Shares by Chain</div>
         <Doughnut data={{
           labels: localShares.map(stat => stat.chain),
@@ -120,7 +126,7 @@ export function StatsCharts() {
         }} options={chartOptions} />
       </div>
 
-      <div style={{ flex: 1, maxWidth: '300px' }}>
+      <div style={{ flex: 1, maxWidth: '350px' }}>
         <div style={titleStyle}>Assets by Chain</div>
         <Doughnut data={{
           labels: localAssets.map(stat => stat.chain),
