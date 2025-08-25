@@ -106,8 +106,6 @@ export function StatsCharts() {
     );
   }
 
-  console.log(localShares, COLORS);
-
   return <div>
     <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
       <div style={{ flex: 1, maxWidth: '350px' }}>
