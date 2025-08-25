@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { useAccount, useChainId, useSwitchChain, useReadContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from 'wagmi';
+import { useAccount, useChainId, useSwitchChain, useReadContract, useWriteContract, useWaitForTransactionReceipt, useReadContracts, useConnect } from 'wagmi';
 import { erc20Abi, formatUnits, maxUint256, parseUnits, type Address } from 'viem';
 import { VaultAbi } from '../consts/abis/Vault';
 import { CHAINS, VAULT_ADDRESS, USDC_ADDRESS } from '../consts';
@@ -10,9 +10,8 @@ const DECIMALS = 6
 export function DepositUSDC() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { chains, switchChain, isPending: isSwitching } = useSwitchChain();
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
   const [amount, setAmount] = useState<string>('');
-  const availableChains = chains?.length ? chains : CHAINS;
 
   const { data: fee } = useReadContract({
     address: VAULT_ADDRESS,
@@ -58,8 +57,8 @@ export function DepositUSDC() {
   }, [rawTokenData])
 
   const selectedChain = useMemo(
-    () => availableChains.find((c) => c.id === chainId) ?? CHAINS[0],
-    [availableChains, chainId]
+    () => CHAINS.find((c) => c.id === chainId) || CHAINS[0],
+    [chainId]
   );
 
   const parsedAmount = useMemo(() => {
@@ -163,7 +162,6 @@ export function DepositUSDC() {
       : 'Deposit';
 
   const onPrimaryAction = () => {
-    if (!isConnected) return; // Connect handled by global button
     return needsApproval ? onApprove() : onDeposit();
   };
 
@@ -177,7 +175,7 @@ export function DepositUSDC() {
         <div>
           <div style={label}>Network</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
-            {(availableChains.length ? availableChains : CHAINS).map((c) => {
+            {CHAINS.map((c) => {
               const active = c.id === selectedChain.id;
               return (
                 <button
